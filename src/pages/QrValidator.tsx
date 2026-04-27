@@ -53,6 +53,10 @@ function QrCamera({ onScan }: { onScan: (text: string) => void }) {
 
   useEffect(() => {
     let stream: MediaStream | null = null;
+    type BarcodeDetectorType = { detect: (el: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
+    const detector: BarcodeDetectorType | null = 'BarcodeDetector' in window
+      ? new (window as unknown as { BarcodeDetector: new (o: object) => BarcodeDetectorType }).BarcodeDetector({ formats: ['qr_code'] })
+      : null;
 
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment' } })
@@ -79,8 +83,7 @@ function QrCamera({ onScan }: { onScan: (text: string) => void }) {
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(video, 0, 0);
 
-      if ('BarcodeDetector' in window) {
-        const detector = new (window as unknown as { BarcodeDetector: new (o: object) => { detect: (el: HTMLVideoElement) => Promise<{ rawValue: string }[]> } }).BarcodeDetector({ formats: ['qr_code'] });
+      if (detector) {
         detector.detect(video).then((codes) => {
           if (codes.length > 0) {
             onScan(codes[0].rawValue);
