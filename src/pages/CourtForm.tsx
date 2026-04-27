@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import type { ICourt, TimeSlot } from '../types';
 import api from '../lib/api';
 
@@ -18,11 +20,18 @@ interface CourtFormData {
   availableSlots: TimeSlot[];
 }
 
+const DEFAULT_DESCRIPTION =
+  '<p><strong>Descripción:</strong> 4 Canchas de Futbol 7, 2 Canchas de Voley.</p>' +
+  '<p><strong>Incluye:</strong> Chalecos, Pelotas</p>' +
+  '<p><strong>Tribuna:</strong> Para 100 personas y Areas sociales.</p>' +
+  '<p><strong>Estacionamiento interno:</strong> Para 100 vehículos, vigilado.</p>' +
+  '<p><strong>Servicios higiénicos:</strong> Damas y Caballeros</p>';
+
 const EMPTY_FORM: CourtFormData = {
   name: '',
   location: '',
   pricePerHour: '',
-  description: '',
+  description: DEFAULT_DESCRIPTION,
   availableSlots: [],
 };
 
@@ -71,6 +80,62 @@ function slotDuration(slot: TimeSlot): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ''}` : `${m}m`;
+}
+
+/* ─── Editor de texto enriquecido ─── */
+function RichTextEditor({ value, onChange }: { value: string; onChange: (html: string) => void }) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({ heading: false, code: false, codeBlock: false, blockquote: false, horizontalRule: false }),
+    ],
+    content: value,
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+  });
+
+  if (!editor) return null;
+
+  const tbBtn = (active: boolean) =>
+    `w-7 h-7 rounded flex items-center justify-center transition-colors ${
+      active ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-gray-100'
+    }`;
+
+  return (
+    <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-green-400 focus-within:ring-1 focus-within:ring-green-400 transition-all">
+      <div className="flex items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-100">
+        <button type="button" title="Negrita" onClick={() => editor.chain().focus().toggleBold().run()} className={`${tbBtn(editor.isActive('bold'))} font-bold text-sm`}>
+          B
+        </button>
+        <button type="button" title="Cursiva" onClick={() => editor.chain().focus().toggleItalic().run()} className={`${tbBtn(editor.isActive('italic'))} italic text-sm font-medium`}>
+          I
+        </button>
+        <div className="w-px h-4 bg-gray-200 mx-1" />
+        <button type="button" title="Lista con viñetas" onClick={() => editor.chain().focus().toggleBulletList().run()} className={tbBtn(editor.isActive('bulletList'))}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none" />
+            <line x1="9" y1="6" x2="20" y2="6" strokeLinecap="round" />
+            <line x1="9" y1="12" x2="20" y2="12" strokeLinecap="round" />
+            <line x1="9" y1="18" x2="20" y2="18" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button type="button" title="Lista numerada" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={tbBtn(editor.isActive('orderedList'))}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <line x1="10" y1="6" x2="20" y2="6" strokeLinecap="round" />
+            <line x1="10" y1="12" x2="20" y2="12" strokeLinecap="round" />
+            <line x1="10" y1="18" x2="20" y2="18" strokeLinecap="round" />
+            <text x="2" y="8" fontSize="7" fill="currentColor" stroke="none" fontWeight="bold">1.</text>
+            <text x="2" y="14" fontSize="7" fill="currentColor" stroke="none" fontWeight="bold">2.</text>
+            <text x="2" y="20" fontSize="7" fill="currentColor" stroke="none" fontWeight="bold">3.</text>
+          </svg>
+        </button>
+      </div>
+      <EditorContent
+        editor={editor}
+        className="[&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[120px] [&_.ProseMirror]:p-3 [&_.ProseMirror]:text-sm [&_.ProseMirror]:text-gray-700 [&_.ProseMirror_p]:mb-1.5 [&_.ProseMirror_p:last-child]:mb-0 [&_.ProseMirror_strong]:font-semibold [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ul]:mb-1.5 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5 [&_.ProseMirror_ol]:mb-1.5 [&_.ProseMirror_li]:mb-0.5"
+      />
+    </div>
+  );
 }
 
 /* ─── Componente de sección ─── */
@@ -338,12 +403,9 @@ export default function CourtForm() {
               </Field>
             </div>
             <Field label="Descripción">
-              <textarea
+              <RichTextEditor
                 value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Describe la cancha: tipo de piso, dimensiones, techado, etc."
-                rows={3}
-                className="input w-full resize-none"
+                onChange={(html) => setForm((f) => ({ ...f, description: html }))}
               />
             </Field>
           </div>
