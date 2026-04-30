@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { IReservation, ICourt, IUser } from '../types';
 import api from '../lib/api';
 
@@ -6,6 +6,8 @@ type PopulatedReservation = Omit<IReservation, 'userId' | 'courtId'> & {
   userId: IUser;
   courtId: ICourt;
 };
+
+const LIMIT = 25;
 
 const STATUS_TABS = [
   { value: 'all',      label: 'Todas' },
@@ -38,11 +40,13 @@ const ICO = (path: React.ReactNode, sw = 1.6) =>
   );
 
 const Icons = {
-  refresh: ICO(<><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.3L3 16M3 21v-5h5"/></>),
-  search:  ICO(<><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>),
-  check:   ICO(<><path d="m5 12 5 5L20 7"/></>, 2),
-  x:       ICO(<><path d="M6 6l12 12M18 6 6 18"/></>, 2),
-  eye:     ICO(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>),
+  refresh:  ICO(<><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.3L3 16M3 21v-5h5"/></>),
+  search:   ICO(<><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>),
+  check:    ICO(<><path d="m5 12 5 5L20 7"/></>, 2),
+  x:        ICO(<><path d="M6 6l12 12M18 6 6 18"/></>, 2),
+  eye:      ICO(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>),
+  chevLeft: ICO(<><path d="m15 18-6-6 6-6"/></>),
+  chevRight:ICO(<><path d="m9 18 6-6-6-6"/></>),
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -71,6 +75,55 @@ function Avatar({ name, size = 32 }: { name: string; size?: number }) {
       fontSize: size * 0.38, fontWeight: 600, flexShrink: 0,
     }}>
       {initials}
+    </div>
+  );
+}
+
+/* ─── Pagination ─── */
+function Pagination({
+  page, total, limit, onChange,
+}: {
+  page: number; total: number; limit: number; onChange: (p: number) => void;
+}) {
+  const totalPages = Math.ceil(total / limit);
+  if (totalPages <= 1) return null;
+
+  const from = (page - 1) * limit + 1;
+  const to   = Math.min(page * limit, total);
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      flexWrap: 'wrap', gap: 10,
+      padding: '12px 16px',
+      borderTop: '1px solid var(--border)',
+    }}>
+      <span style={{ fontSize: 12, color: 'var(--fg-faint)' }}>
+        Mostrando {from}–{to} de {total}
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button
+          onClick={() => onChange(page - 1)}
+          disabled={page === 1}
+          className="btn-ghost"
+          style={{ height: 30, padding: '0 8px' }}
+          title="Página anterior"
+        >
+          {Icons.chevLeft(15)}
+        </button>
+        <span style={{ fontSize: 12, color: 'var(--fg-muted)', padding: '0 4px', minWidth: 80, textAlign: 'center' }}>
+          Página {page} de {totalPages}
+        </span>
+        <button
+          onClick={() => onChange(page + 1)}
+          disabled={page >= totalPages}
+          className="btn-ghost"
+          style={{ height: 30, padding: '0 8px' }}
+          title="Página siguiente"
+        >
+          {Icons.chevRight(15)}
+        </button>
+      </div>
     </div>
   );
 }
@@ -351,52 +404,60 @@ function ReservationCard({
 /* ─── Main page ─── */
 export default function Reservations() {
   const [reservations, setReservations] = useState<PopulatedReservation[]>([]);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal]               = useState(0);
+  const [page, setPage]                 = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [actionId, setActionId] = useState<string | null>(null);
-  const [selected, setSelected] = useState<PopulatedReservation | null>(null);
-  const [toast, setToast] = useState('');
+  const [search, setSearch]             = useState('');
+  const [loading, setLoading]           = useState(true);
+  const [actionId, setActionId]         = useState<string | null>(null);
+  const [selected, setSelected]         = useState<PopulatedReservation | null>(null);
+  const [toast, setToast]               = useState('');
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(''), 3000);
   };
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage: number) => {
     setLoading(true);
     try {
-      const qs = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (search.trim()) params.set('search', search.trim());
+      params.set('page', String(targetPage));
+      params.set('limit', String(LIMIT));
+
       const res = await api.get<{
         success: boolean;
-        data: { reservations: PopulatedReservation[]; total: number };
-      }>(`/api/admin/reservations${qs}`);
+        data: { reservations: PopulatedReservation[]; total: number; page: number };
+      }>(`/api/admin/reservations?${params.toString()}`);
+
       setReservations(res.data.data.reservations);
       setTotal(res.data.data.total);
+      setPage(res.data.data.page);
     } catch { /* silent */ }
     finally { setLoading(false); }
-  }, [statusFilter]);
+  }, [statusFilter, search]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(1); }, [statusFilter]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return reservations;
-    return reservations.filter(r =>
-      r.reservationCode.toLowerCase().includes(q) ||
-      r.courtId?.name?.toLowerCase().includes(q) ||
-      r.userId?.name?.toLowerCase().includes(q) ||
-      r.userId?.email?.toLowerCase().includes(q)
-    );
-  }, [reservations, search]);
+  // Debounce search — espera 400ms antes de ir al backend
+  useEffect(() => {
+    const t = setTimeout(() => load(1), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  function handlePageChange(newPage: number) {
+    load(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   async function handleApprove(id: string) {
     setActionId(id);
     try {
       await api.post(`/api/admin/reservations/${id}/approve`, {});
       showToast('Reserva aprobada · correo con QR enviado');
-      await load();
+      await load(page);
       setSelected(null);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -410,15 +471,13 @@ export default function Reservations() {
     try {
       await api.post(`/api/admin/reservations/${id}/reject`, {});
       showToast('Reserva rechazada');
-      await load();
+      await load(page);
       setSelected(null);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       alert(msg || 'Error al rechazar');
     } finally { setActionId(null); }
   }
-
-  const pendingCount = reservations.filter(r => r.status === 'pending').length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -440,15 +499,12 @@ export default function Reservations() {
 
       {/* Header */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--fg-faint)', marginBottom: 4 }}>
-            {total} en total
-            {pendingCount > 0 && (
-              <> · <span style={{ color: 'var(--warn)', fontWeight: 600 }}>{pendingCount} pendiente{pendingCount === 1 ? '' : 's'}</span></>
-            )}
-          </div>
+        <div style={{ fontSize: 12, color: 'var(--fg-faint)' }}>
+          {total > 0
+            ? `${total} reserva${total === 1 ? '' : 's'} en total`
+            : loading ? '' : 'Sin resultados'}
         </div>
-        <button onClick={load} className="btn-secondary">
+        <button onClick={() => load(page)} className="btn-secondary">
           {Icons.refresh(15)} Actualizar
         </button>
       </div>
@@ -481,7 +537,7 @@ export default function Reservations() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por código, cancha, usuario..."
+            placeholder="Buscar por código de reserva..."
             className="input"
             style={{ paddingLeft: 34 }}
           />
@@ -493,7 +549,7 @@ export default function Reservations() {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
           <Spinner />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : reservations.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--fg-faint)' }}>
           <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.4 }}>📭</div>
           <div style={{ fontSize: 13, fontWeight: 500 }}>
@@ -504,7 +560,7 @@ export default function Reservations() {
         <>
           {/* Mobile */}
           <div className="lg:hidden" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {filtered.map(r => (
+            {reservations.map(r => (
               <ReservationCard
                 key={r._id} r={r}
                 onView={setSelected}
@@ -513,6 +569,7 @@ export default function Reservations() {
                 loading={actionId === r._id}
               />
             ))}
+            <Pagination page={page} total={total} limit={LIMIT} onChange={handlePageChange} />
           </div>
 
           {/* Desktop table */}
@@ -533,7 +590,7 @@ export default function Reservations() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(r => (
+                  {reservations.map(r => (
                     <TableRow
                       key={r._id} r={r}
                       onView={setSelected}
@@ -545,6 +602,7 @@ export default function Reservations() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={page} total={total} limit={LIMIT} onChange={handlePageChange} />
           </div>
         </>
       )}
