@@ -6,14 +6,61 @@ import CourtAvailabilityTimeline from '../components/CourtAvailabilityTimeline';
 
 function formatDate(iso: string) {
   try {
-    return new Date(iso).toLocaleDateString('es-PE', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return iso;
+    return new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
+  } catch { return iso; }
+}
+
+/* ─── Icons ─── */
+const ICO = (path: React.ReactNode, sw = 1.6) =>
+  (s = 18) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0, display: 'block' }}>
+      {path}
+    </svg>
+  );
+
+const Icons = {
+  pin:    ICO(<><path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13Z"/><circle cx="12" cy="9" r="2.5"/></>),
+  clock:  ICO(<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>),
+  edit:   ICO(<><path d="M4 20h4l11-11-4-4L4 16v4ZM14 5l4 4"/></>),
+  trash:  ICO(<><path d="M3 6h18M9 6V4h6v2M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14"/></>),
+  chevL:  ICO(<><path d="m15 6-6 6 6 6"/></>),
+  external: ICO(<><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></>),
+};
+
+const COURT_COLORS: Record<string, string> = {
+  futbol: 'oklch(0.55 0.15 145)', tenis: 'oklch(0.55 0.14 280)',
+  padel: 'oklch(0.55 0.14 220)', basquet: 'oklch(0.55 0.15 45)',
+  voley: 'oklch(0.55 0.14 190)',
+};
+function getCourtColor(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [key, color] of Object.entries(COURT_COLORS)) {
+    if (lower.includes(key)) return color;
   }
+  return 'oklch(0.5 0.14 155)';
+}
+
+function CourtImgPlaceholder({ name, height = 240 }: { name: string; height?: number }) {
+  const color = getCourtColor(name);
+  return (
+    <div style={{
+      height, width: '100%', overflow: 'hidden',
+      background: `linear-gradient(135deg, ${color} 0%, color-mix(in oklch, ${color}, black 50%) 100%)`,
+      position: 'relative',
+    }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 24px)' }} />
+      <svg viewBox="0 0 400 200" preserveAspectRatio="none"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.4 }}>
+        <rect x="8" y="8" width="384" height="184" fill="none" stroke="white" strokeWidth="1"/>
+        <line x1="200" y1="8" x2="200" y2="192" stroke="white" strokeWidth="0.8"/>
+        <circle cx="200" cy="100" r="28" fill="none" stroke="white" strokeWidth="0.8"/>
+        <rect x="8" y="64" width="36" height="72" fill="none" stroke="white" strokeWidth="0.8"/>
+        <rect x="356" y="64" width="36" height="72" fill="none" stroke="white" strokeWidth="0.8"/>
+      </svg>
+    </div>
+  );
 }
 
 export default function CourtDetail() {
@@ -26,47 +73,41 @@ export default function CourtDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const res = await api.get<{ success: boolean; data: ICourt }>(`/api/courts/${id}`);
       setCourt(res.data.data);
-    } catch {
-      setError('No se pudo cargar la cancha');
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError('No se pudo cargar la cancha'); }
+    finally { setLoading(false); }
   }, [id]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   async function handleDeactivate() {
     if (!court) return;
     if (!confirm(`¿Desactivar la cancha "${court.name}"?`)) return;
-    try {
-      await api.delete(`/api/courts/${court._id}`);
-      navigate('/canchas');
-    } catch {
-      alert('Error al desactivar');
-    }
+    try { await api.delete(`/api/courts/${court._id}`); navigate('/canchas'); }
+    catch { alert('Error al desactivar'); }
   }
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-24">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600" />
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '80px 0' }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%',
+          border: '2px solid var(--border)', borderTopColor: 'var(--accent)',
+          animation: 'spin 0.7s linear infinite',
+        }} />
       </div>
     );
   }
 
   if (error || !court) {
     return (
-      <div className="max-w-xl mx-auto mt-12 bg-red-50 border border-red-100 rounded-2xl p-6 text-center">
-        <p className="text-sm text-red-600">{error || 'Cancha no encontrada'}</p>
-        <Link to="/canchas" className="inline-block mt-3 text-sm font-medium text-red-700 underline">
-          Volver a canchas
+      <div className="card" style={{ maxWidth: 480, margin: '40px auto', padding: 24, textAlign: 'center' }}>
+        <div style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 12 }}>{error || 'Cancha no encontrada'}</div>
+        <Link to="/canchas" style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 500, textDecoration: 'none' }}>
+          ← Volver a canchas
         </Link>
       </div>
     );
@@ -80,42 +121,44 @@ export default function CourtDetail() {
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(court.location)}`;
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm">
-        <Link to="/canchas" className="text-gray-400 hover:text-gray-700 transition-colors">
-          Canchas
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+        <Link to="/canchas" style={{ color: 'var(--fg-faint)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {Icons.chevL(14)} Canchas
         </Link>
-        <span className="text-gray-300">/</span>
-        <span className="text-gray-900 font-medium truncate">{court.name}</span>
+        <span style={{ color: 'var(--border-strong)' }}>/</span>
+        <span style={{ color: 'var(--fg-muted)', fontWeight: 500 }}>{court.name}</span>
       </div>
 
       {/* Hero card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="relative h-56 sm:h-72 bg-gradient-to-br from-green-50 to-green-100">
+      <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
+        {/* Image */}
+        <div style={{ position: 'relative' }}>
           {hero ? (
-            <img src={hero} alt={court.name} className="w-full h-full object-cover" />
+            <img src={hero} alt={court.name} style={{ width: '100%', maxHeight: 280, minHeight: 160, objectFit: 'cover', display: 'block' }} />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-6xl opacity-30">⚽</div>
+            <CourtImgPlaceholder name={court.name} height={220} />
           )}
           {!court.isActive && (
-            <span className="absolute top-4 left-4 text-xs font-semibold bg-gray-900/80 text-white px-3 py-1 rounded-full">
-              Inactiva
-            </span>
+            <span style={{
+              position: 'absolute', top: 14, left: 14,
+              background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
+              color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 600,
+              padding: '3px 10px', borderRadius: 999,
+            }}>Inactiva</span>
           )}
-          <div className="absolute top-4 right-4 flex gap-2">
+          <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', gap: 8 }}>
             <button
               onClick={() => navigate(`/canchas/${court._id}/editar`)}
-              className="bg-white/95 backdrop-blur text-gray-900 text-sm font-semibold px-4 py-2 rounded-xl shadow hover:bg-white transition-colors"
+              className="btn-secondary"
+              style={{ height: 32, padding: '0 12px', fontSize: 12, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.15)', color: '#fff' }}
             >
-              Editar
+              {Icons.edit(14)} Editar
             </button>
             {court.isActive && (
-              <button
-                onClick={handleDeactivate}
-                className="bg-white/95 backdrop-blur text-red-600 text-sm font-semibold px-4 py-2 rounded-xl shadow hover:bg-white transition-colors"
-              >
-                Desactivar
+              <button onClick={handleDeactivate} className="btn-danger" style={{ height: 32, padding: '0 12px', fontSize: 12, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.15)' }}>
+                {Icons.trash(14)} Desactivar
               </button>
             )}
           </div>
@@ -123,128 +166,122 @@ export default function CourtDetail() {
 
         {/* Thumbnails */}
         {images.length > 1 && (
-          <div className="px-5 pt-4 flex gap-2 overflow-x-auto">
+          <div style={{ padding: '14px 20px 0', display: 'flex', gap: 8, overflowX: 'auto' }}>
             {images.map((img, i) => (
-              <button
-                key={img}
-                onClick={() => setActiveImage(i)}
-                className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${
-                  i === activeImage ? 'border-green-600 ring-2 ring-green-100' : 'border-transparent opacity-70 hover:opacity-100'
-                }`}
-              >
-                <img src={img} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+              <button key={img} onClick={() => setActiveImage(i)} style={{
+                flexShrink: 0, width: 72, height: 52, borderRadius: 8, overflow: 'hidden',
+                border: `2px solid ${i === activeImage ? 'var(--accent)' : 'var(--border)'}`,
+                opacity: i === activeImage ? 1 : 0.6, cursor: 'pointer',
+                transition: 'all 120ms',
+              }}>
+                <img src={img} alt={`Foto ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </button>
             ))}
           </div>
         )}
 
-        {/* Título + meta */}
-        <div className="p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-gray-900">{court.name}</h1>
-              <a
-                href={mapsLink}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-green-700 transition-colors mt-1"
+        {/* Court info */}
+        <div style={{ padding: 20 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>{court.name}</div>
+              <a href={mapsLink} target="_blank" rel="noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 13, color: 'var(--fg-faint)', textDecoration: 'none',
+                marginTop: 6, transition: 'color 120ms',
+              }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--fg-faint)')}
               >
-                <span>📍</span>
-                <span className="truncate">{court.location}</span>
-                {court.coordinates && <span className="text-xs text-green-600 ml-1">· Ver en mapa ↗</span>}
+                {Icons.pin(14)} {court.location}
+                {court.coordinates && <span style={{ color: 'var(--accent)', fontSize: 11 }}>{Icons.external(12)}</span>}
               </a>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-green-600 leading-none">S/ {court.pricePerHour}</p>
-              <p className="text-xs text-gray-400 mt-0.5">por hora</p>
+            <div style={{ textAlign: 'right' }}>
+              <div className="mono" style={{ fontSize: 26, fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>
+                S/ {court.pricePerHour}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--fg-faint)', marginTop: 4 }}>por hora</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Stats tiles */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Tile label="Turnos" value={String(slots.length)} hint={slots.length === 1 ? 'ventana' : 'ventanas'} />
-        <Tile label="Fotos" value={String(images.length)} hint={images.length === 1 ? 'imagen' : 'imágenes'} />
-        <Tile
-          label="Estado"
-          value={court.isActive ? 'Activa' : 'Inactiva'}
-          accent={court.isActive ? 'green' : 'gray'}
-        />
-        <Tile label="Creada" value={formatDate(court.createdAt)} small />
+      <div className="grid-tiles-4">
+        {[
+          { label: 'Turnos',  value: String(slots.length),   hint: slots.length === 1 ? 'ventana' : 'ventanas' },
+          { label: 'Fotos',   value: String(images.length),  hint: images.length === 1 ? 'imagen' : 'imágenes' },
+          { label: 'Estado',  value: court.isActive ? 'Activa' : 'Inactiva', accent: court.isActive },
+          { label: 'Creada',  value: formatDate(court.createdAt), small: true },
+        ].map(tile => (
+          <div key={tile.label} className="card" style={{ padding: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--fg-faint)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>
+              {tile.label}
+            </div>
+            <div style={{
+              fontSize: tile.small ? 13 : 20, fontWeight: 700,
+              color: 'accent' in tile ? (tile.accent ? 'var(--accent)' : 'var(--fg-faint)') : 'var(--fg)',
+            }}>
+              {tile.value}
+            </div>
+            {tile.hint && <div style={{ fontSize: 11, color: 'var(--fg-faint)', marginTop: 2 }}>{tile.hint}</div>}
+          </div>
+        ))}
       </div>
 
-      {/* Descripción + Horarios side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Descripción */}
-        <section className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Descripción</h2>
+      {/* Description + Slots */}
+      <div className="grid-detail-2col">
+        {/* Description */}
+        <div className="card" style={{ padding: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-faint)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 14 }}>
+            Descripción
+          </div>
           {court.description ? (
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{court.description}</p>
+            <p style={{ fontSize: 13.5, color: 'var(--fg-muted)', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+              {court.description}
+            </p>
           ) : (
-            <p className="text-sm text-gray-400 italic">Sin descripción registrada.</p>
+            <p style={{ fontSize: 13, color: 'var(--fg-faint)', fontStyle: 'italic' }}>Sin descripción registrada.</p>
           )}
-        </section>
+        </div>
 
-        {/* Horarios */}
-        <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Horarios</h2>
+        {/* Slots */}
+        <div className="card" style={{ padding: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-faint)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 14 }}>
+            Horarios disponibles
+          </div>
           {slots.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">Sin horarios configurados.</p>
+            <p style={{ fontSize: 13, color: 'var(--fg-faint)', fontStyle: 'italic' }}>Sin horarios configurados.</p>
           ) : (
-            <ul className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {slots.map((s, i) => (
-                <li
-                  key={i}
-                  className="flex items-center justify-between bg-green-50/60 border border-green-100 rounded-lg px-3 py-2 text-sm"
-                >
-                  <span className="font-mono text-green-800">
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)',
+                  borderRadius: 8, padding: '8px 12px',
+                }}>
+                  <span className="mono" style={{ fontSize: 13, fontWeight: 500, color: 'var(--accent)' }}>
                     {s.startTime} – {s.endTime}
                   </span>
-                  <span className="text-xs text-green-700 font-medium">Turno {i + 1}</span>
-                </li>
+                  <span style={{ fontSize: 11, color: 'var(--fg-faint)' }}>Turno {i + 1}</span>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
-        </section>
+        </div>
       </div>
 
       {/* Ocupación */}
-      <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Ocupación</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Consulta qué horas están reservadas y cuáles siguen libres por día.
-            </p>
+      <div className="card" style={{ padding: 20 }}>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Ocupación</div>
+          <div style={{ fontSize: 12, color: 'var(--fg-faint)', marginTop: 4 }}>
+            Consulta qué horas están reservadas y cuáles siguen libres por día.
           </div>
         </div>
         <CourtAvailabilityTimeline courtId={court._id} operatingWindows={slots} />
-      </section>
-    </div>
-  );
-}
-
-function Tile({
-  label,
-  value,
-  hint,
-  accent,
-  small,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  accent?: 'green' | 'gray';
-  small?: boolean;
-}) {
-  const valueColor =
-    accent === 'green' ? 'text-green-600' : accent === 'gray' ? 'text-gray-500' : 'text-gray-900';
-  return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
-      <p className={`${small ? 'text-sm' : 'text-xl'} font-bold mt-1 ${valueColor}`}>{value}</p>
-      {hint && <p className="text-xs text-gray-400 mt-0.5">{hint}</p>}
+      </div>
     </div>
   );
 }

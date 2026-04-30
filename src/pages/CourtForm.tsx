@@ -94,23 +94,29 @@ function RichTextEditor({ value, onChange }: { value: string; onChange: (html: s
 
   if (!editor) return null;
 
-  const tbBtn = (active: boolean) =>
-    `w-7 h-7 rounded flex items-center justify-center transition-colors ${
-      active ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-gray-100'
-    }`;
+  const tbBtnStyle = (active: boolean): React.CSSProperties => ({
+    width: 28, height: 28, borderRadius: 6,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: active ? 'var(--accent-soft)' : 'transparent',
+    color: active ? 'var(--accent)' : 'var(--fg-muted)',
+    border: 'none', cursor: 'pointer', transition: 'all 100ms',
+  });
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-green-400 focus-within:ring-1 focus-within:ring-green-400 transition-all">
-      <div className="flex items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-100">
-        <button type="button" title="Negrita" onClick={() => editor.chain().focus().toggleBold().run()} className={`${tbBtn(editor.isActive('bold'))} font-bold text-sm`}>
+    <div style={{
+      border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden',
+      transition: 'border-color 120ms',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '8px 10px', background: 'var(--bg-elev-2)', borderBottom: '1px solid var(--border)' }}>
+        <button type="button" title="Negrita" onClick={() => editor.chain().focus().toggleBold().run()} style={{ ...tbBtnStyle(editor.isActive('bold')), fontWeight: 700, fontSize: 13 }}>
           B
         </button>
-        <button type="button" title="Cursiva" onClick={() => editor.chain().focus().toggleItalic().run()} className={`${tbBtn(editor.isActive('italic'))} italic text-sm font-medium`}>
+        <button type="button" title="Cursiva" onClick={() => editor.chain().focus().toggleItalic().run()} style={{ ...tbBtnStyle(editor.isActive('italic')), fontStyle: 'italic', fontSize: 13 }}>
           I
         </button>
-        <div className="w-px h-4 bg-gray-200 mx-1" />
-        <button type="button" title="Lista con viñetas" onClick={() => editor.chain().focus().toggleBulletList().run()} className={tbBtn(editor.isActive('bulletList'))}>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 4px' }} />
+        <button type="button" title="Lista con viñetas" onClick={() => editor.chain().focus().toggleBulletList().run()} style={tbBtnStyle(editor.isActive('bulletList'))}>
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" />
             <circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" />
             <circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none" />
@@ -119,8 +125,8 @@ function RichTextEditor({ value, onChange }: { value: string; onChange: (html: s
             <line x1="9" y1="18" x2="20" y2="18" strokeLinecap="round" />
           </svg>
         </button>
-        <button type="button" title="Lista numerada" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={tbBtn(editor.isActive('orderedList'))}>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <button type="button" title="Lista numerada" onClick={() => editor.chain().focus().toggleOrderedList().run()} style={tbBtnStyle(editor.isActive('orderedList'))}>
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <line x1="10" y1="6" x2="20" y2="6" strokeLinecap="round" />
             <line x1="10" y1="12" x2="20" y2="12" strokeLinecap="round" />
             <line x1="10" y1="18" x2="20" y2="18" strokeLinecap="round" />
@@ -132,7 +138,8 @@ function RichTextEditor({ value, onChange }: { value: string; onChange: (html: s
       </div>
       <EditorContent
         editor={editor}
-        className="[&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[120px] [&_.ProseMirror]:p-3 [&_.ProseMirror]:text-sm [&_.ProseMirror]:text-gray-700 [&_.ProseMirror_p]:mb-1.5 [&_.ProseMirror_p:last-child]:mb-0 [&_.ProseMirror_strong]:font-semibold [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ul]:mb-1.5 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5 [&_.ProseMirror_ol]:mb-1.5 [&_.ProseMirror_li]:mb-0.5"
+        className="[&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[120px] [&_.ProseMirror]:p-3 [&_.ProseMirror]:text-sm [&_.ProseMirror_p]:mb-1.5 [&_.ProseMirror_p:last-child]:mb-0 [&_.ProseMirror_strong]:font-semibold [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ul]:mb-1.5 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5 [&_.ProseMirror_ol]:mb-1.5 [&_.ProseMirror_li]:mb-0.5"
+        style={{ color: 'var(--fg-muted)' }}
       />
     </div>
   );
@@ -141,10 +148,10 @@ function RichTextEditor({ value, onChange }: { value: string; onChange: (html: s
 /* ─── Componente de sección ─── */
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <div className="mb-5">
-        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{title}</h2>
-        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+    <section className="card" style={{ padding: 24 }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-faint)', textTransform: 'uppercase', letterSpacing: 0.7 }}>{title}</div>
+        {subtitle && <p style={{ fontSize: 12, color: 'var(--fg-faint)', marginTop: 4 }}>{subtitle}</p>}
       </div>
       {children}
     </section>
@@ -154,9 +161,9 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--fg-muted)', marginBottom: 6 }}>{label}</label>
       {children}
-      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      {hint && <p style={{ fontSize: 11, color: 'var(--fg-faint)', marginTop: 6 }}>{hint}</p>}
     </div>
   );
 }
@@ -353,182 +360,114 @@ export default function CourtForm() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-24">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600" />
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '80px 0' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: 'var(--accent)', animation: 'spin 0.7s linear infinite' }} />
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl">
+    <div style={{ maxWidth: 640 }}>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <Link
-          to="/canchas"
-          className="text-sm text-gray-400 hover:text-gray-700 transition-colors flex items-center gap-1"
-        >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28 }}>
+        <Link to="/canchas" style={{ fontSize: 13, color: 'var(--fg-faint)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
           ← Canchas
         </Link>
-        <span className="text-gray-200">/</span>
-        <h1 className="text-xl font-bold text-gray-900">
+        <span style={{ color: 'var(--border-strong)' }}>/</span>
+        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)' }}>
           {isEdit ? (court?.name ?? 'Editar cancha') : 'Nueva cancha'}
-        </h1>
+        </span>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* ── Información básica ── */}
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* ── Info básica ── */}
         <Section title="Información básica">
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Field label="Nombre *">
-              <input
-                required
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Cancha 1 — Grass Sintético"
-                className="input w-full"
-              />
+              <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Cancha 1 — Grass Sintético" className="input" />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Precio por hora (S/) *">
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  step="0.50"
-                  value={form.pricePerHour}
-                  onChange={(e) => setForm((f) => ({ ...f, pricePerHour: e.target.value }))}
-                  placeholder="50"
-                  className="input w-full"
-                />
-              </Field>
-            </div>
+            <Field label="Precio por hora (S/) *">
+              <input required type="number" min="0" step="0.50" value={form.pricePerHour} onChange={(e) => setForm((f) => ({ ...f, pricePerHour: e.target.value }))} placeholder="50" className="input" style={{ maxWidth: 180 }} />
+            </Field>
             <Field label="Descripción">
-              <RichTextEditor
-                value={form.description}
-                onChange={(html) => setForm((f) => ({ ...f, description: html }))}
-              />
+              <RichTextEditor value={form.description} onChange={(html) => setForm((f) => ({ ...f, description: html }))} />
             </Field>
           </div>
         </Section>
 
         {/* ── Ubicación ── */}
-        <Section
-          title="Ubicación"
-          subtitle={
-            mapsReady
-              ? 'Escribe y selecciona de las sugerencias para guardar coordenadas exactas.'
-              : 'Ingresa la dirección completa de la cancha.'
-          }
-        >
+        <Section title="Ubicación" subtitle={mapsReady ? 'Escribe y selecciona de las sugerencias para guardar coordenadas exactas.' : 'Ingresa la dirección completa de la cancha.'}>
           <Field label="Dirección *">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
-                📍
-              </span>
-              <input
-                ref={locationRef}
-                required
-                value={form.location}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, location: e.target.value, coordinates: undefined }));
-                }}
-                placeholder="Av. Los Deportes 123, Lima"
-                className="input w-full pl-9"
-              />
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-faint)', fontSize: 14 }}>📍</span>
+              <input ref={locationRef} required value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value, coordinates: undefined }))} placeholder="Av. Los Deportes 123, Lima" className="input" style={{ paddingLeft: 32 }} />
             </div>
             {form.coordinates && (
-              <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
-                ✓ Coordenadas exactas guardadas ({form.coordinates.lat.toFixed(5)},{' '}
-                {form.coordinates.lng.toFixed(5)})
+              <p style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                ✓ Coordenadas guardadas ({form.coordinates.lat.toFixed(5)}, {form.coordinates.lng.toFixed(5)})
               </p>
             )}
           </Field>
         </Section>
 
         {/* ── Horarios ── */}
-        <Section
-          title="Horarios disponibles"
-          subtitle="Define los turnos en que la cancha puede ser reservada. Cada turno es un bloque continuo."
-        >
-          {/* Presets rápidos */}
-          <div className="mb-5">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-              Configuración rápida
-            </p>
-            <div className="flex flex-wrap gap-2">
+        <Section title="Horarios disponibles" subtitle="Define los turnos en que la cancha puede ser reservada.">
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--fg-faint)', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>Configuración rápida</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {SCHEDULE_PRESETS.map((preset) => (
-                <button
-                  key={preset.label}
-                  type="button"
-                  onClick={() => applyPreset(preset)}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-green-400 hover:text-green-700 hover:bg-green-50 transition-all"
+                <button key={preset.label} type="button" onClick={() => applyPreset(preset)} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  fontSize: 12, padding: '5px 12px', borderRadius: 999,
+                  border: '1px solid var(--border)', color: 'var(--fg-muted)',
+                  background: 'transparent', cursor: 'pointer', transition: 'all 100ms',
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-muted)'; }}
                 >
-                  <span>{preset.icon}</span>
-                  {preset.label}
+                  <span>{preset.icon}</span> {preset.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Slots actuales */}
-          <div className="space-y-2 mb-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
             {form.availableSlots.length === 0 ? (
-              <div className="text-center py-6 bg-gray-50 rounded-xl">
-                <p className="text-sm text-gray-400">Sin turnos configurados.</p>
-                <p className="text-xs text-gray-300 mt-0.5">Usa una configuración rápida o agrega un turno.</p>
+              <div style={{ textAlign: 'center', padding: '20px', background: 'var(--bg-elev-2)', borderRadius: 10 }}>
+                <div style={{ fontSize: 13, color: 'var(--fg-faint)' }}>Sin turnos configurados.</div>
+                <div style={{ fontSize: 11, color: 'var(--fg-faint)', marginTop: 4, opacity: 0.7 }}>Usa una configuración rápida o agrega un turno.</div>
               </div>
             ) : (
               form.availableSlots.map((slot, i) => {
                 const dur = slotDuration(slot);
                 return (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100"
-                  >
-                    <span className="text-xs font-bold text-gray-400 w-5 text-center">{i + 1}</span>
-                    <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-elev-2)', borderRadius: 10, padding: '12px 14px', border: '1px solid var(--border)' }}>
+                    <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-faint)', width: 18, textAlign: 'center' }}>{i + 1}</span>
+                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <div>
-                        <p className="text-xs text-gray-400 mb-1">Inicio</p>
-                        <input
-                          type="time"
-                          value={slot.startTime}
-                          onChange={(e) => updateSlot(i, 'startTime', e.target.value)}
-                          className="input w-full text-sm"
-                        />
+                        <div style={{ fontSize: 11, color: 'var(--fg-faint)', marginBottom: 4 }}>Inicio</div>
+                        <input type="time" value={slot.startTime} onChange={(e) => updateSlot(i, 'startTime', e.target.value)} className="input" style={{ fontSize: 13 }} />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400 mb-1">Fin</p>
-                        <input
-                          type="time"
-                          value={slot.endTime}
-                          onChange={(e) => updateSlot(i, 'endTime', e.target.value)}
-                          className="input w-full text-sm"
-                        />
+                        <div style={{ fontSize: 11, color: 'var(--fg-faint)', marginBottom: 4 }}>Fin</div>
+                        <input type="time" value={slot.endTime} onChange={(e) => updateSlot(i, 'endTime', e.target.value)} className="input" style={{ fontSize: 13 }} />
                       </div>
                     </div>
                     {dur && (
-                      <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-lg w-12 text-center flex-shrink-0">
+                      <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', background: 'var(--accent-soft)', padding: '3px 8px', borderRadius: 6, flexShrink: 0 }}>
                         {dur}
                       </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => removeSlot(i)}
-                      className="text-red-300 hover:text-red-600 hover:bg-red-50 w-8 h-8 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 text-lg"
-                      title="Eliminar turno"
-                    >
-                      ×
-                    </button>
+                    <button type="button" onClick={() => removeSlot(i)} style={{ width: 28, height: 28, borderRadius: 6, background: 'transparent', border: '1px solid var(--border)', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, display: 'grid', placeItems: 'center', flexShrink: 0 }} title="Eliminar">×</button>
                   </div>
                 );
               })
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={addSlot}
-            className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-green-400 hover:text-green-600 hover:bg-green-50 transition-all font-medium"
+          <button type="button" onClick={addSlot} style={{ width: '100%', padding: '12px', borderRadius: 10, border: '2px dashed var(--border)', fontSize: 13, color: 'var(--fg-faint)', background: 'transparent', cursor: 'pointer', transition: 'all 100ms', fontWeight: 500 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-faint)'; }}
           >
             + Agregar turno personalizado
           </button>
@@ -536,105 +475,76 @@ export default function CourtForm() {
 
         {/* ── Fotos ── */}
         {isEdit ? (
-          <Section
-            title="Fotos de la cancha"
-            subtitle="La primera foto se usa como portada. Máximo 5 imágenes."
-          >
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <Section title="Fotos de la cancha" subtitle="La primera foto se usa como portada. Máximo 5 imágenes.">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
               {(court?.images ?? []).map((img, i) => (
-                <div key={img} className="relative aspect-video rounded-xl overflow-hidden group">
-                  <img src={img} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <button
-                      type="button"
-                      onClick={() => handleImageDelete(i)}
-                      className="bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg font-semibold shadow"
-                    >
+                <div key={img} style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 8, overflow: 'hidden' }}
+                  onMouseEnter={e => { const overlay = (e.currentTarget as HTMLDivElement).querySelector('.img-overlay') as HTMLDivElement; if (overlay) overlay.style.opacity = '1'; }}
+                  onMouseLeave={e => { const overlay = (e.currentTarget as HTMLDivElement).querySelector('.img-overlay') as HTMLDivElement; if (overlay) overlay.style.opacity = '0'; }}
+                >
+                  <img src={img} alt={`Foto ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <div className="img-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 150ms' }}>
+                    <button type="button" onClick={() => handleImageDelete(i)} style={{ background: 'var(--danger)', color: '#fff', fontSize: 12, padding: '5px 12px', borderRadius: 6, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
                       Eliminar
                     </button>
                   </div>
                   {i === 0 && (
-                    <span className="absolute top-2 left-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded-full font-semibold">
+                    <span style={{ position: 'absolute', top: 6, left: 6, fontSize: 10, background: 'var(--accent)', color: 'var(--accent-fg)', padding: '2px 7px', borderRadius: 999, fontWeight: 600 }}>
                       Portada
                     </span>
                   )}
                 </div>
               ))}
-
               {(court?.images?.length ?? 0) < 5 && (
-                <label className="aspect-video rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-green-400 hover:text-green-500 hover:bg-green-50 transition-all cursor-pointer">
+                <label style={{ aspectRatio: '16/9', borderRadius: 8, border: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--fg-faint)', cursor: 'pointer', transition: 'all 100ms' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLLabelElement).style.borderColor = 'var(--accent)'; (e.currentTarget as HTMLLabelElement).style.color = 'var(--accent)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLLabelElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLLabelElement).style.color = 'var(--fg-faint)'; }}
+                >
                   {uploadingImage ? (
                     <>
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500" />
-                      {uploadProgress && (
-                        <span className="text-[11px] font-medium text-green-600">
-                          Subiendo {uploadProgress.current} / {uploadProgress.total}
-                        </span>
-                      )}
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: 'var(--accent)', animation: 'spin 0.7s linear infinite' }} />
+                      {uploadProgress && <span style={{ fontSize: 11, color: 'var(--accent)' }}>Subiendo {uploadProgress.current} / {uploadProgress.total}</span>}
                     </>
                   ) : (
                     <>
-                      <span className="text-2xl font-light">+</span>
-                      <span className="text-xs font-medium">Agregar fotos</span>
-                      <span className="text-[10px] text-gray-300">
-                        Puedes seleccionar varias ({5 - (court?.images?.length ?? 0)} restante{5 - (court?.images?.length ?? 0) === 1 ? '' : 's'})
-                      </span>
+                      <span style={{ fontSize: 22, fontWeight: 300 }}>+</span>
+                      <span style={{ fontSize: 11, fontWeight: 500 }}>Agregar fotos</span>
+                      <span style={{ fontSize: 10, opacity: 0.6 }}>{5 - (court?.images?.length ?? 0)} restante{5 - (court?.images?.length ?? 0) === 1 ? '' : 's'}</span>
                     </>
                   )}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    className="hidden"
-                    onChange={handleImageUpload}
-                    disabled={uploadingImage}
-                  />
+                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }} onChange={handleImageUpload} disabled={uploadingImage} />
                 </label>
               )}
             </div>
           </Section>
         ) : (
-          <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
-            <span className="text-blue-400 mt-0.5">💡</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: 'var(--info-soft)', border: '1px solid color-mix(in oklch, var(--info), transparent 60%)', borderRadius: 10, padding: '14px 16px', fontSize: 13, color: 'var(--info)' }}>
+            <span>💡</span>
             <div>
-              <p className="font-medium">Fotos disponibles luego de crear</p>
-              <p className="text-blue-500 text-xs mt-0.5">
-                Podrás agregar hasta 5 fotos desde la pantalla de edición.
-              </p>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Fotos disponibles luego de crear</div>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>Podrás agregar hasta 5 fotos desde la pantalla de edición.</div>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
+          <div style={{ background: 'var(--danger-soft)', border: '1px solid color-mix(in oklch, var(--danger), transparent 60%)', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--danger)' }}>
             {error}
           </div>
         )}
 
-        {/* Acciones */}
-        <div className="flex items-center justify-between pt-2 pb-8">
-          <button
-            type="button"
-            onClick={() => navigate('/canchas')}
-            className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
-          >
+        {/* Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, paddingBottom: 24 }}>
+          <button type="button" onClick={() => navigate('/canchas')} className="btn-secondary">
             Cancelar
           </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
+          <button type="submit" disabled={saving} className="btn-primary" style={{ gap: 8 }}>
             {saving ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'rgba(255,255,255,0.9)', animation: 'spin 0.7s linear infinite' }} />
                 Guardando...
               </>
-            ) : isEdit ? (
-              'Guardar cambios'
-            ) : (
-              'Crear cancha →'
-            )}
+            ) : isEdit ? 'Guardar cambios' : 'Crear cancha →'}
           </button>
         </div>
       </form>

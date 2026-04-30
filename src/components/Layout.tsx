@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, CSSProperties } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
@@ -6,162 +6,204 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-interface NavItem {
-  to: string;
-  label: string;
-  icon: (props: { className?: string }) => JSX.Element;
-}
+/* ─── Icons ─── */
+const ICO = (path: React.ReactNode, sw = 1.6) =>
+  (s = 18) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0, display: 'block' }}>
+      {path}
+    </svg>
+  );
 
-/* ─────────────── SVG icons (uniformes, sin emojis) ─────────────── */
-const IconDashboard = ({ className = '' }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="3" y="3" width="7" height="9" rx="1.5" />
-    <rect x="14" y="3" width="7" height="5" rx="1.5" />
-    <rect x="14" y="12" width="7" height="9" rx="1.5" />
-    <rect x="3" y="16" width="7" height="5" rx="1.5" />
-  </svg>
-);
-const IconBall = ({ className = '' }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M5.6 5.6l2.5 2.5M15.9 15.9l2.5 2.5M5.6 18.4l2.5-2.5M15.9 8.1l2.5-2.5" />
-  </svg>
-);
-const IconCalendar = ({ className = '' }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="3" y="5" width="18" height="16" rx="2" />
-    <path d="M3 9h18M8 3v4M16 3v4" />
-  </svg>
-);
-const IconQr = ({ className = '' }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="3" y="3" width="7" height="7" rx="1" />
-    <rect x="14" y="3" width="7" height="7" rx="1" />
-    <rect x="3" y="14" width="7" height="7" rx="1" />
-    <path d="M14 14h3v3M21 14v0M17 21h4M14 18v3" />
-  </svg>
-);
-const IconLogout = ({ className = '' }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-  </svg>
-);
-const IconMenu = ({ className = '' }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M3 6h18M3 12h18M3 18h18" />
-  </svg>
-);
-const IconClose = ({ className = '' }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M18 6L6 18M6 6l12 12" />
-  </svg>
-);
-
-const NAV_ITEMS: NavItem[] = [
-  { to: '/dashboard', label: 'Dashboard', icon: IconDashboard },
-  { to: '/canchas', label: 'Canchas', icon: IconBall },
-  { to: '/reservas', label: 'Reservas', icon: IconCalendar },
-  { to: '/validar', label: 'Validar QR', icon: IconQr },
-];
-
-const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
-  '/dashboard': { title: 'Dashboard', subtitle: 'Resumen del día' },
-  '/canchas': { title: 'Canchas', subtitle: 'Gestiona tus canchas y horarios' },
-  '/reservas': { title: 'Reservas', subtitle: 'Aprobaciones y seguimiento' },
-  '/validar': { title: 'Validar QR', subtitle: 'Acceso al ingresar a la cancha' },
+const Icons = {
+  dashboard: ICO(<><rect x="3" y="3" width="7" height="9" rx="1.2"/><rect x="14" y="3" width="7" height="5" rx="1.2"/><rect x="14" y="12" width="7" height="9" rx="1.2"/><rect x="3" y="16" width="7" height="5" rx="1.2"/></>),
+  calendar:  ICO(<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></>),
+  field:     ICO(<><rect x="2.5" y="6" width="19" height="12" rx="1.5"/><path d="M12 6v12M2.5 12H6a3 3 0 0 0 0-6M21.5 12H18a3 3 0 0 1 0-6M2.5 12H6a3 3 0 0 1 0 6M21.5 12H18a3 3 0 0 0 0 6"/></>),
+  qr:        ICO(<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v3M14 18v3h3M18 18v3M21 18v3"/></>),
+  search:    ICO(<><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>),
+  bell:      ICO(<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"/></>),
+  logout:    ICO(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></>),
+  menu:      ICO(<><path d="M3 6h18M3 12h18M3 18h18"/></>),
+  x:         ICO(<><path d="M6 6l12 12M18 6 6 18"/></>),
 };
 
-function getPageTitle(pathname: string): { title: string; subtitle?: string } {
+const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Dashboard', icon: Icons.dashboard },
+  { to: '/reservas',  label: 'Reservas',  icon: Icons.calendar,  badge: 0 },
+  { to: '/canchas',   label: 'Canchas',   icon: Icons.field },
+  { to: '/validar',   label: 'Validar QR', icon: Icons.qr },
+];
+
+const PAGE_TITLES: Record<string, { t: string; s: string }> = {
+  '/dashboard': { t: 'Dashboard',      s: 'Resumen del día' },
+  '/canchas':   { t: 'Canchas',        s: 'Gestiona tu inventario de espacios' },
+  '/reservas':  { t: 'Reservas',       s: 'Aprueba o rechaza reservas pendientes' },
+  '/validar':   { t: 'Validar QR',     s: 'Escanea el código de la reserva' },
+};
+
+function getHead(pathname: string) {
   for (const [path, info] of Object.entries(PAGE_TITLES)) {
     if (pathname.startsWith(path)) return info;
   }
-  return { title: '' };
+  return { t: 'Mikancha', s: '' };
 }
 
-function SidebarLink({
-  to,
-  label,
-  icon: Icon,
-  onClick,
-}: NavItem & { onClick?: () => void }) {
-  const { pathname } = useLocation();
-  const active = pathname.startsWith(to);
-
+function Avatar({ name, size = 32 }: { name: string; size?: number }) {
+  const initials = name.split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
+  const hue = (name.charCodeAt(0) * 17 + (name.charCodeAt(1) || 0) * 7) % 360;
   return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
-        active
-          ? 'bg-primary-600 text-white shadow-sm shadow-primary-500/20'
-          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-      }`}
-    >
-      <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
-      <span>{label}</span>
-    </Link>
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: `oklch(0.5 0.06 ${hue})`, color: '#fff',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.38, fontWeight: 600, flexShrink: 0,
+    }}>
+      {initials}
+    </div>
   );
 }
 
-function UserPill({ name, email, avatar }: { name?: string; email?: string; avatar?: string }) {
-  const initials = (name ?? email ?? '?')
-    .split(' ')
-    .map((p) => p[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
+function Logo() {
   return (
-    <div className="flex items-center gap-3 min-w-0">
-      {avatar ? (
-        <img src={avatar} alt={name} className="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" />
-      ) : (
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-          {initials}
-        </div>
-      )}
-      <div className="min-w-0 hidden sm:block">
-        <p className="text-sm font-semibold text-slate-900 truncate">{name ?? 'Admin'}</p>
-        <p className="text-xs text-slate-400 truncate">{email}</p>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8,
+        background: 'var(--accent)', color: 'var(--accent-fg)',
+        display: 'grid', placeItems: 'center', flexShrink: 0,
+      }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M3 12h18M12 3v18" strokeWidth="1.5" opacity="0.5"/>
+        </svg>
+      </div>
+      <div>
+        <div style={{ fontWeight: 600, fontSize: 14, letterSpacing: '-0.01em', lineHeight: 1.1 }}>Mikancha</div>
+        <div className="mono" style={{ fontSize: 10, color: 'var(--fg-faint)', letterSpacing: 0.4 }}>admin · v2</div>
       </div>
     </div>
   );
 }
 
-function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+function NavItem({
+  to, label, icon, badge, active, onClick,
+}: {
+  to: string; label: string; icon: (s: number) => JSX.Element;
+  badge?: number; active: boolean; onClick?: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const bg = active
+    ? 'var(--accent-soft-strong)'
+    : hovered ? 'var(--bg-hover)' : 'transparent';
+  const color = active ? 'var(--accent)' : 'var(--fg-muted)';
+
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* Logo */}
-      <div className="px-6 py-5 border-b border-slate-100">
-        <Link to="/dashboard" onClick={onNavigate} className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white shadow-sm shadow-primary-500/30">
-            <IconBall className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-900 text-sm leading-tight">MiCancha</p>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Panel admin</p>
-          </div>
+    <Link
+      to={to}
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '8px 10px', borderRadius: 8,
+        background: bg, color,
+        textDecoration: 'none', fontSize: 13.5,
+        fontWeight: active ? 500 : 400,
+        transition: 'all 100ms', width: '100%',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {icon(17)}
+      <span style={{ flex: 1 }}>{label}</span>
+      {badge != null && badge > 0 && (
+        <span className="mono" style={{
+          fontSize: 10, padding: '1px 6px', borderRadius: 999,
+          background: active ? 'var(--accent)' : 'var(--warn)',
+          color: active ? 'var(--accent-fg)' : 'var(--bg)',
+          fontWeight: 600,
+        }}>{badge}</span>
+      )}
+    </Link>
+  );
+}
+
+function Sidebar({ onNavigate, user, onLogout }: {
+  onNavigate?: () => void;
+  user?: { name?: string; email?: string } | null;
+  onLogout: () => void;
+}) {
+  const { pathname } = useLocation();
+  const displayName = user?.name || user?.email || 'Admin';
+
+  return (
+    <div style={{
+      background: 'var(--bg-elev)', borderRight: '1px solid var(--border)',
+      padding: '18px 12px', display: 'flex', flexDirection: 'column', gap: 4,
+      height: '100%',
+    }}>
+      <div style={{
+        padding: '4px 8px 18px',
+        borderBottom: '1px solid var(--border)',
+        marginBottom: 14,
+      }}>
+        <Link to="/dashboard" onClick={onNavigate} style={{ textDecoration: 'none' }}>
+          <Logo />
         </Link>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
-        <p className="px-3 mb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-          General
-        </p>
-        {NAV_ITEMS.map((item) => (
-          <SidebarLink key={item.to} {...item} onClick={onNavigate} />
-        ))}
-      </nav>
+      <div style={{
+        fontSize: 10, color: 'var(--fg-faint)',
+        textTransform: 'uppercase', letterSpacing: 0.8,
+        padding: '10px 10px 6px', fontWeight: 600,
+      }}>
+        Operación
+      </div>
 
-      {/* Footer */}
-      <div className="px-3 pb-4 pt-3 border-t border-slate-100">
-        <div className="px-3 py-2 mb-2 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100/50 ring-1 ring-primary-100">
-          <p className="text-[11px] font-semibold text-primary-800">¿Necesitas ayuda?</p>
-          <p className="text-[10px] text-primary-700/80 mt-0.5">
-            Revisa la documentación o contáctanos.
-          </p>
+      {NAV_ITEMS.map(item => {
+        const active = pathname === item.to || pathname.startsWith(item.to + '/');
+        return (
+          <NavItem
+            key={item.to}
+            {...item}
+            active={active}
+            onClick={onNavigate}
+          />
+        );
+      })}
+
+      <div style={{ flex: 1 }} />
+
+      <div style={{
+        padding: 8, borderTop: '1px solid var(--border)', marginTop: 8,
+        display: 'flex', gap: 10, alignItems: 'center',
+      }}>
+        <Avatar name={displayName} size={32} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.2 }}>
+            {user?.name || 'Admin'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--fg-faint)' }}>Administrador</div>
         </div>
+        <button
+          onClick={onLogout}
+          title="Cerrar sesión"
+          style={{
+            width: 28, height: 28, borderRadius: 6,
+            background: 'transparent', border: '1px solid var(--border)',
+            color: 'var(--fg-faint)', display: 'grid', placeItems: 'center',
+            cursor: 'pointer', flexShrink: 0,
+            transition: 'all 120ms',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--danger)';
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--danger)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-faint)';
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)';
+          }}
+        >
+          {Icons.logout(14)}
+        </button>
       </div>
     </div>
   );
@@ -172,9 +214,8 @@ export default function Layout({ children }: LayoutProps) {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const page = getPageTitle(pathname);
+  const head = getHead(pathname);
 
-  // Cierra el drawer al cambiar de ruta
   useEffect(() => {
     setDrawerOpen(false);
   }, [pathname]);
@@ -185,72 +226,131 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="flex min-h-screen">
       {/* Sidebar desktop */}
-      <aside className="hidden lg:flex w-64 flex-col flex-shrink-0 border-r border-slate-200/70 bg-white">
-        <Sidebar />
+      <aside
+        className="hidden lg:block"
+        style={{ width: 232, flexShrink: 0, position: 'sticky', top: 0, height: '100vh', alignSelf: 'flex-start' }}
+      >
+        <Sidebar user={user} onLogout={handleLogout} />
       </aside>
 
       {/* Drawer móvil */}
       {drawerOpen && (
         <>
           <div
-            className="lg:hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 animate-fade-in"
+            className="lg:hidden"
             onClick={() => setDrawerOpen(false)}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+              zIndex: 40,
+            }}
           />
-          <aside className="lg:hidden fixed top-0 left-0 bottom-0 w-72 z-50 shadow-2xl animate-slide-in-right">
+          <aside
+            className="lg:hidden animate-slide-in-right"
+            style={{
+              position: 'fixed', top: 0, left: 0, bottom: 0,
+              width: 260, zIndex: 50,
+            }}
+          >
             <button
               onClick={() => setDrawerOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 z-10"
-              aria-label="Cerrar menú"
+              style={{
+                position: 'absolute', top: 12, right: 12,
+                width: 28, height: 28, borderRadius: 6,
+                background: 'var(--bg-elev-2)',
+                border: '1px solid var(--border)',
+                color: 'var(--fg-muted)',
+                display: 'grid', placeItems: 'center',
+                cursor: 'pointer', zIndex: 10,
+              }}
             >
-              <IconClose className="w-5 h-5" />
+              {Icons.x(14)}
             </button>
-            <Sidebar onNavigate={() => setDrawerOpen(false)} />
+            <Sidebar user={user} onNavigate={() => setDrawerOpen(false)} onLogout={handleLogout} />
           </aside>
         </>
       )}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         {/* Topbar */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200/70">
-          <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                onClick={() => setDrawerOpen(true)}
-                className="lg:hidden p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                aria-label="Abrir menú"
-              >
-                <IconMenu className="w-5 h-5" />
-              </button>
-              <div className="min-w-0">
-                <h1 className="text-base sm:text-lg font-bold text-slate-900 truncate">{page.title}</h1>
-                {page.subtitle && (
-                  <p className="text-xs text-slate-400 truncate hidden sm:block">{page.subtitle}</p>
-                )}
-              </div>
-            </div>
+        <header style={{
+          height: 60, borderBottom: '1px solid var(--border)',
+          background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 30,
+          display: 'flex', alignItems: 'center', gap: 16,
+          padding: '0 20px',
+        }}>
+          <button
+            className="lg:hidden"
+            onClick={() => setDrawerOpen(true)}
+            style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: 'var(--bg-elev)', border: '1px solid var(--border)',
+              color: 'var(--fg-muted)', display: 'grid', placeItems: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            {Icons.menu(18)}
+          </button>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              <UserPill name={user?.name} email={user?.email} avatar={user?.avatar} />
-              <button
-                onClick={handleLogout}
-                title="Cerrar sesión"
-                className="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                aria-label="Cerrar sesión"
-              >
-                <IconLogout className="w-5 h-5" />
-              </button>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontSize: 11, color: 'var(--fg-faint)',
+              letterSpacing: 0.4, textTransform: 'uppercase', fontWeight: 500,
+            }}>
+              Mikancha · {head.s}
+            </div>
+            <div style={{
+              fontSize: 18, fontWeight: 600,
+              letterSpacing: '-0.02em', marginTop: 1,
+            }}>
+              {head.t}
             </div>
           </div>
+
+          {/* Search */}
+          <div className="hidden sm:flex topbar-search" style={{
+            alignItems: 'center', gap: 8, height: 36, padding: '0 12px',
+            background: 'var(--bg-elev)', border: '1px solid var(--border)',
+            borderRadius: 8, width: 260,
+          }}>
+            <span style={{ color: 'var(--fg-faint)', flexShrink: 0 }}>{Icons.search(15)}</span>
+            <input
+              placeholder="Buscar reserva, cancha, cliente…"
+              style={{
+                border: 'none', background: 'transparent', outline: 'none',
+                color: 'var(--fg)', fontSize: 13, flex: 1, width: 0,
+              }}
+            />
+            <span className="mono" style={{
+              fontSize: 10, padding: '1px 5px', borderRadius: 4,
+              border: '1px solid var(--border)', color: 'var(--fg-faint)',
+            }}>⌘K</span>
+          </div>
+
+          {/* Bell */}
+          <button style={{
+            width: 36, height: 36, borderRadius: 8,
+            background: 'var(--bg-elev)', border: '1px solid var(--border)',
+            color: 'var(--fg-muted)', display: 'grid', placeItems: 'center',
+            cursor: 'pointer', position: 'relative', flexShrink: 0,
+          }}>
+            {Icons.bell(17)}
+            <span style={{
+              position: 'absolute', top: 8, right: 8,
+              width: 7, height: 7, borderRadius: 999,
+              background: 'var(--warn)', border: '2px solid var(--bg-elev)',
+            }} />
+          </button>
         </header>
 
-        {/* Contenido */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl w-full mx-auto animate-fade-in">
+        {/* Content */}
+        <div className="content-pad animate-fade-in" style={{ flex: 1 }}>
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

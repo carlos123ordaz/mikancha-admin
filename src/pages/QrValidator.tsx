@@ -7,31 +7,34 @@ type PopulatedReservation = Omit<IReservation, 'userId' | 'courtId'> & {
   courtId: ICourt;
 };
 
-const STATUS_BADGE: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  approved: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  rejected: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
-  used: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+const STATUS_MAP: Record<string, { bg: string; fg: string; label: string }> = {
+  pending:  { bg: 'var(--warn-soft)',          fg: 'var(--warn)',   label: 'Pendiente' },
+  approved: { bg: 'var(--accent-soft-strong)', fg: 'var(--accent)', label: 'Aprobada' },
+  rejected: { bg: 'var(--danger-soft)',        fg: 'var(--danger)', label: 'Rechazada' },
+  used:     { bg: 'var(--info-soft)',          fg: 'var(--info)',   label: 'Ya utilizada' },
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pendiente',
-  approved: 'Aprobada',
-  rejected: 'Rechazada',
-  used: 'Ya utilizada',
+/* ─── Icons ─── */
+const ICO = (path: React.ReactNode, sw = 1.6) =>
+  (s = 18) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0, display: 'block' }}>
+      {path}
+    </svg>
+  );
+
+const Icons = {
+  qr:     ICO(<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v3M14 18v3h3M18 18v3M21 18v3"/></>),
+  check:  ICO(<><path d="m5 12 5 5L20 7"/></>, 2),
+  arrL:   ICO(<><path d="M19 12H5M11 6l-6 6 6 6"/></>),
+  cam:    ICO(<><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z"/><circle cx="12" cy="13" r="3.5"/></>),
+  keyboard: ICO(<><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></>),
 };
 
-/**
- * Extrae el código de reserva desde el contenido del QR.
- * Acepta:
- *  - Código directo: `R-XXXXXX`
- *  - URL legacy: `…/reserva/R-XXXXXX?token=…` o `…?token=UUID`
- *  - UUID legacy puro
- */
 function extractCode(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
-
   try {
     const url = new URL(trimmed);
     const tokenParam = url.searchParams.get('token');
@@ -44,7 +47,37 @@ function extractCode(raw: string): string | null {
   }
 }
 
-/* ─────────────── Cámara QR ─────────────── */
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_MAP[status] ?? { bg: 'var(--bg-elev-2)', fg: 'var(--fg-faint)', label: status };
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '4px 12px', borderRadius: 999,
+      background: s.bg, color: s.fg,
+      fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.fg }} />
+      {s.label}
+    </span>
+  );
+}
+
+function Avatar({ name, size = 40 }: { name: string; size?: number }) {
+  const initials = name.split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
+  const hue = (name.charCodeAt(0) * 17 + (name.charCodeAt(1) || 0) * 7) % 360;
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: `oklch(0.5 0.06 ${hue})`, color: '#fff',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.38, fontWeight: 600, flexShrink: 0,
+    }}>
+      {initials}
+    </div>
+  );
+}
+
+/* ─── Camera ─── */
 function QrCamera({ onScan }: { onScan: (text: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -60,12 +93,9 @@ function QrCamera({ onScan }: { onScan: (text: string) => void }) {
 
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment' } })
-      .then((s) => {
+      .then(s => {
         stream = s;
-        if (videoRef.current) {
-          videoRef.current.srcObject = s;
-          videoRef.current.play();
-        }
+        if (videoRef.current) { videoRef.current.srcObject = s; videoRef.current.play(); }
         tick();
       })
       .catch(() => setCamError('No se pudo acceder a la cámara. Usa la entrada manual.'));
@@ -73,66 +103,59 @@ function QrCamera({ onScan }: { onScan: (text: string) => void }) {
     function tick() {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      if (!video || !canvas || video.readyState !== 4) {
-        rafRef.current = requestAnimationFrame(tick);
-        return;
-      }
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(video, 0, 0);
-
+      if (!video || !canvas || video.readyState !== 4) { rafRef.current = requestAnimationFrame(tick); return; }
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      canvas.getContext('2d')!.drawImage(video, 0, 0);
       if (detector) {
-        detector.detect(video).then((codes) => {
-          if (codes.length > 0) {
-            onScan(codes[0].rawValue);
-          }
-        }).catch(() => {});
+        detector.detect(video).then(codes => { if (codes.length > 0) onScan(codes[0].rawValue); }).catch(() => {});
       }
-
       rafRef.current = requestAnimationFrame(tick);
     }
 
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      stream?.getTracks().forEach((t) => t.stop());
-    };
+    return () => { cancelAnimationFrame(rafRef.current); stream?.getTracks().forEach(t => t.stop()); };
   }, [onScan]);
 
   if (camError) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div style={{
+        background: 'var(--warn-soft)', border: '1px solid color-mix(in oklch, var(--warn), transparent 60%)',
+        borderRadius: 10, padding: '14px 16px', fontSize: 13, color: 'var(--warn)',
+      }}>
         {camError}
       </div>
     );
   }
 
   return (
-    <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-square max-w-sm mx-auto shadow-inner">
-      <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
-      <canvas ref={canvasRef} className="hidden" />
-      {/* Marco de visor con esquinas */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="relative w-56 h-56">
-          <span className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
-          <span className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
-          <span className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
-          <span className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
-          {/* Línea de escaneo */}
-          <span className="absolute left-2 right-2 top-1/2 h-0.5 bg-emerald-400/80 shadow-[0_0_12px_2px_rgba(52,211,153,0.7)] animate-pulse" />
+    <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', background: '#000', aspectRatio: '1/1', maxWidth: 360, margin: '0 auto' }}>
+      <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} muted playsInline />
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      {/* Scanner frame */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ position: 'relative', width: 200, height: 200 }}>
+          {[
+            { top: -2, left: -2, borderTop: `3px solid var(--accent)`, borderLeft: `3px solid var(--accent)`, borderRadius: '12px 0 0 0' },
+            { top: -2, right: -2, borderTop: `3px solid var(--accent)`, borderRight: `3px solid var(--accent)`, borderRadius: '0 12px 0 0' },
+            { bottom: -2, left: -2, borderBottom: `3px solid var(--accent)`, borderLeft: `3px solid var(--accent)`, borderRadius: '0 0 0 12px' },
+            { bottom: -2, right: -2, borderBottom: `3px solid var(--accent)`, borderRight: `3px solid var(--accent)`, borderRadius: '0 0 12px 0' },
+          ].map((s, i) => (
+            <span key={i} style={{ position: 'absolute', width: 28, height: 28, ...s }} />
+          ))}
+          <span style={{
+            position: 'absolute', left: 4, right: 4, top: '50%',
+            height: 2, background: 'var(--accent)',
+            boxShadow: '0 0 12px 2px var(--accent-soft)',
+            animation: 'fade-in 1s ease-in-out infinite alternate',
+          }} />
         </div>
       </div>
     </div>
   );
 }
 
-/* ─────────────── Resultado de la validación ─────────────── */
+/* ─── Result ─── */
 function ReservationResult({
-  reservation,
-  onMarkUsed,
-  onReset,
-  marking,
+  reservation, onMarkUsed, onReset, marking,
 }: {
   reservation: PopulatedReservation;
   onMarkUsed: () => void;
@@ -140,67 +163,83 @@ function ReservationResult({
   marking: boolean;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 p-6">
-      <div className="flex items-center gap-3 mb-5">
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_BADGE[reservation.status]}`}>
-          {STATUS_LABEL[reservation.status]}
-        </span>
-        <span className="font-mono text-sm text-slate-500 tracking-wider">
+    <div className="card animate-slide-up" style={{ overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <StatusBadge status={reservation.status} />
+        <span className="mono" style={{ fontSize: 12, color: 'var(--fg-faint)', flex: 1 }}>
           {reservation.reservationCode}
         </span>
       </div>
 
-      <div className="rounded-xl bg-slate-50 ring-1 ring-slate-100 p-4 space-y-2.5 text-sm mb-5">
-        <InfoRow label="Cancha" value={reservation.courtId.name} />
-        <InfoRow label="Sede" value={reservation.courtId.location} />
-        <InfoRow label="Fecha" value={reservation.date} />
-        <InfoRow label="Horario" value={`${reservation.startTime} – ${reservation.endTime}`} />
-        <div className="border-t border-slate-200 pt-2.5">
-          <InfoRow label="Usuario" value={reservation.userId.name} />
-          <InfoRow label="Email" value={reservation.userId.email} />
+      <div style={{ padding: 20 }}>
+        {/* User */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+          <Avatar name={reservation.userId?.name || '?'} size={44} />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{reservation.userId?.name || '—'}</div>
+            <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 2 }}>{reservation.userId?.email || '—'}</div>
+          </div>
         </div>
-      </div>
 
-      {reservation.status === 'approved' ? (
+        {/* Details */}
+        <div style={{
+          background: 'var(--bg-elev-2)', border: '1px solid var(--border)',
+          borderRadius: 10, padding: '14px 16px',
+          marginBottom: 18, display: 'grid', gap: 10,
+        }}>
+          {[
+            ['Cancha',   reservation.courtId?.name],
+            ['Sede',     reservation.courtId?.location],
+            ['Fecha',    reservation.date],
+            ['Horario',  `${reservation.startTime} – ${reservation.endTime}`],
+          ].map(([label, value]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 13 }}>
+              <span style={{ color: 'var(--fg-faint)' }}>{label}</span>
+              <span style={{ color: 'var(--fg)', fontWeight: 500, textAlign: 'right' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Action */}
+        {reservation.status === 'approved' ? (
+          <button
+            onClick={onMarkUsed}
+            disabled={marking}
+            className="btn-primary"
+            style={{ width: '100%', height: 44, fontSize: 14 }}
+          >
+            {Icons.check(16)} {marking ? 'Procesando...' : 'Marcar como utilizada'}
+          </button>
+        ) : (
+          <div style={{
+            textAlign: 'center', padding: '12px',
+            borderRadius: 8, fontSize: 13, fontWeight: 500,
+            background: reservation.status === 'used' ? 'var(--info-soft)' : 'var(--danger-soft)',
+            color: reservation.status === 'used' ? 'var(--info)' : 'var(--danger)',
+          }}>
+            {reservation.status === 'used' ? 'Esta reserva ya fue utilizada' : 'Esta reserva no está activa'}
+          </div>
+        )}
+
         <button
-          onClick={onMarkUsed}
-          disabled={marking}
-          className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold text-base hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm"
+          onClick={onReset}
+          style={{
+            marginTop: 14, width: '100%',
+            background: 'transparent', border: 'none',
+            color: 'var(--fg-muted)', fontSize: 13, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '8px',
+          }}
         >
-          {marking ? 'Procesando...' : '✓ Marcar como utilizada'}
+          {Icons.arrL(14)} Validar otro código
         </button>
-      ) : (
-        <div className={`text-center py-3 rounded-xl text-sm font-semibold ${
-          reservation.status === 'used'
-            ? 'bg-slate-100 text-slate-600'
-            : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
-        }`}>
-          {reservation.status === 'used'
-            ? 'Esta reserva ya fue utilizada'
-            : 'Esta reserva no está activa'}
-        </div>
-      )}
-
-      <button
-        onClick={onReset}
-        className="mt-4 w-full text-sm text-slate-500 hover:text-slate-800 transition-colors"
-      >
-        ← Validar otro código
-      </button>
+      </div>
     </div>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <span className="text-slate-400">{label}</span>
-      <span className="text-slate-800 font-medium text-right truncate">{value}</span>
-    </div>
-  );
-}
-
-/* ─────────────── Página principal ─────────────── */
+/* ─── Main ─── */
 export default function QrValidator() {
   const [mode, setMode] = useState<'camera' | 'manual'>('camera');
   const [manualInput, setManualInput] = useState('');
@@ -211,15 +250,8 @@ export default function QrValidator() {
 
   const validate = useCallback(async (raw: string) => {
     const code = extractCode(raw);
-    if (!code) {
-      setError('Código inválido o formato no reconocido');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setReservation(null);
-
+    if (!code) { setError('Código inválido o formato no reconocido'); return; }
+    setLoading(true); setError(''); setReservation(null);
     try {
       const res = await api.get<{ success: boolean; data: PopulatedReservation }>(
         `/api/admin/qr/${encodeURIComponent(code)}`
@@ -228,92 +260,75 @@ export default function QrValidator() {
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       setError(msg || 'Código no encontrado o inválido');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, []);
 
   async function handleMarkUsed() {
     if (!reservation) return;
-    const code = reservation.reservationCode;
-
     setMarking(true);
     try {
-      await api.post(`/api/admin/qr/${encodeURIComponent(code)}/use`, {});
-      setReservation((r) => r ? { ...r, status: 'used' as IReservation['status'] } : r);
+      await api.post(`/api/admin/qr/${encodeURIComponent(reservation.reservationCode)}/use`, {});
+      setReservation(r => r ? { ...r, status: 'used' as IReservation['status'] } : r);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       alert(msg || 'Error al marcar como utilizada');
-    } finally {
-      setMarking(false);
-    }
+    } finally { setMarking(false); }
   }
 
-  function reset() {
-    setReservation(null);
-    setError('');
-    setManualInput('');
-  }
+  function reset() { setReservation(null); setError(''); setManualInput(''); }
 
   return (
-    <div className="max-w-lg mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Validar reserva</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Escanea el QR del usuario o ingresa su código manualmente.
-        </p>
-      </header>
-
+    <div style={{ maxWidth: 440, margin: '0 auto' }}>
       {/* Mode toggle */}
-      <div className="inline-flex gap-1 bg-slate-100 rounded-xl p-1 mb-6">
-        <button
-          onClick={() => { setMode('camera'); reset(); }}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-            mode === 'camera' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          📷 Cámara
-        </button>
-        <button
-          onClick={() => { setMode('manual'); reset(); }}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-            mode === 'manual' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          ⌨️ Manual
-        </button>
+      <div style={{
+        display: 'inline-flex', gap: 2,
+        background: 'var(--bg-elev-2)', borderRadius: 10, padding: 4,
+        border: '1px solid var(--border)', marginBottom: 24,
+      }}>
+        {[
+          { id: 'camera', label: 'Cámara', icon: Icons.cam },
+          { id: 'manual', label: 'Manual', icon: Icons.keyboard },
+        ].map(m => (
+          <ModeBtn
+            key={m.id}
+            active={mode === m.id}
+            onClick={() => { setMode(m.id as 'camera' | 'manual'); reset(); }}
+          >
+            {m.icon(14)} {m.label}
+          </ModeBtn>
+        ))}
       </div>
 
       {!reservation && !loading && (
         <>
           {mode === 'camera' ? (
-            <div className="mb-6">
+            <div style={{ marginBottom: 20 }}>
               <QrCamera onScan={validate} />
-              <p className="text-center text-xs text-slate-400 mt-3">
+              <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--fg-faint)', marginTop: 12 }}>
                 Apunta la cámara hacia el QR del usuario
               </p>
             </div>
           ) : (
-            <div className="mb-6 bg-white rounded-2xl ring-1 ring-slate-200 p-5 shadow-sm">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Código de reserva
-              </label>
-              <p className="text-xs text-slate-400 mb-3">
-                Ej: <span className="font-mono">R-A3F2B1</span>
-              </p>
-              <div className="flex gap-2">
+            <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Código de reserva</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-faint)', marginBottom: 14 }}>
+                Ej: <span className="mono">R-A3F2B1</span>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
                 <input
                   type="text"
                   value={manualInput}
-                  onChange={(e) => setManualInput(e.target.value.toUpperCase())}
+                  onChange={e => setManualInput(e.target.value.toUpperCase())}
                   placeholder="R-XXXXXX"
-                  className="flex-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent uppercase"
-                  onKeyDown={(e) => e.key === 'Enter' && validate(manualInput)}
+                  className="input mono"
+                  style={{ letterSpacing: 2, fontSize: 14 }}
+                  onKeyDown={e => e.key === 'Enter' && validate(manualInput)}
                 />
                 <button
                   onClick={() => validate(manualInput)}
                   disabled={!manualInput.trim()}
-                  className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm"
+                  className="btn-primary"
+                  style={{ flexShrink: 0 }}
                 >
                   Validar
                 </button>
@@ -322,7 +337,10 @@ export default function QrValidator() {
           )}
 
           {error && (
-            <div className="bg-rose-50 ring-1 ring-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm">
+            <div style={{
+              background: 'var(--danger-soft)', border: '1px solid color-mix(in oklch, var(--danger), transparent 60%)',
+              borderRadius: 10, padding: '12px 16px', fontSize: 13, color: 'var(--danger)',
+            }}>
               {error}
             </div>
           )}
@@ -330,9 +348,13 @@ export default function QrValidator() {
       )}
 
       {loading && (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-3" />
-          <p className="text-slate-400 text-sm">Verificando código...</p>
+        <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <div style={{
+            display: 'inline-block', width: 28, height: 28, borderRadius: '50%',
+            border: '2px solid var(--border)', borderTopColor: 'var(--accent)',
+            animation: 'spin 0.7s linear infinite', marginBottom: 12,
+          }} />
+          <div style={{ color: 'var(--fg-faint)', fontSize: 13 }}>Verificando código...</div>
         </div>
       )}
 
@@ -345,5 +367,27 @@ export default function QrValidator() {
         />
       )}
     </div>
+  );
+}
+
+function ModeBtn({ active, onClick, children }: {
+  active: boolean; onClick: () => void; children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '6px 14px', borderRadius: 7,
+        fontSize: 13, fontWeight: active ? 500 : 400,
+        background: active ? 'var(--bg-elev)' : 'transparent',
+        color: active ? 'var(--fg)' : 'var(--fg-muted)',
+        border: active ? '1px solid var(--border)' : '1px solid transparent',
+        cursor: 'pointer', transition: 'all 100ms',
+        boxShadow: active ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
+      }}
+    >
+      {children}
+    </button>
   );
 }
