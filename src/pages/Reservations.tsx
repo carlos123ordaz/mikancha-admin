@@ -559,7 +559,7 @@ export default function Reservations() {
       ) : (
         <>
           {/* Mobile */}
-          <div className="lg:hidden" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="lg:hidden" style={{ flexDirection: 'column', gap: 10 }}>
             {reservations.map(r => (
               <ReservationCard
                 key={r._id} r={r}
