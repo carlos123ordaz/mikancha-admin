@@ -10,18 +10,19 @@ type PopulatedReservation = Omit<IReservation, 'userId' | 'courtId'> & {
 const LIMIT = 25;
 
 const STATUS_TABS = [
-  { value: 'all',      label: 'Todas' },
-  { value: 'pending',  label: 'Pendientes' },
+  { value: 'all', label: 'Todas' },
+  { value: 'pending', label: 'Pendientes' },
   { value: 'approved', label: 'Aprobadas' },
   { value: 'rejected', label: 'Rechazadas' },
-  { value: 'used',     label: 'Usadas' },
+  { value: 'used', label: 'Usadas' },
 ];
 
+
 const STATUS_MAP: Record<string, { bg: string; fg: string; label: string }> = {
-  pending:  { bg: 'var(--warn-soft)',          fg: 'var(--warn)',   label: 'Pendiente' },
+  pending: { bg: 'var(--warn-soft)', fg: 'var(--warn)', label: 'Pendiente' },
   approved: { bg: 'var(--accent-soft-strong)', fg: 'var(--accent)', label: 'Aprobada' },
-  rejected: { bg: 'var(--danger-soft)',        fg: 'var(--danger)', label: 'Rechazada' },
-  used:     { bg: 'var(--info-soft)',          fg: 'var(--info)',   label: 'Usada' },
+  rejected: { bg: 'var(--danger-soft)', fg: 'var(--danger)', label: 'Rechazada' },
+  used: { bg: 'var(--info-soft)', fg: 'var(--info)', label: 'Usada' },
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -40,13 +41,13 @@ const ICO = (path: React.ReactNode, sw = 1.6) =>
   );
 
 const Icons = {
-  refresh:  ICO(<><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.3L3 16M3 21v-5h5"/></>),
-  search:   ICO(<><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>),
-  check:    ICO(<><path d="m5 12 5 5L20 7"/></>, 2),
-  x:        ICO(<><path d="M6 6l12 12M18 6 6 18"/></>, 2),
-  eye:      ICO(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>),
-  chevLeft: ICO(<><path d="m15 18-6-6 6-6"/></>),
-  chevRight:ICO(<><path d="m9 18 6-6-6-6"/></>),
+  refresh: ICO(<><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.3L3 16M3 21v-5h5" /></>),
+  search: ICO(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>),
+  check: ICO(<><path d="m5 12 5 5L20 7" /></>, 2),
+  x: ICO(<><path d="M6 6l12 12M18 6 6 18" /></>, 2),
+  eye: ICO(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>),
+  chevLeft: ICO(<><path d="m15 18-6-6 6-6" /></>),
+  chevRight: ICO(<><path d="m9 18 6-6-6-6" /></>),
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -89,7 +90,7 @@ function Pagination({
   if (totalPages <= 1) return null;
 
   const from = (page - 1) * limit + 1;
-  const to   = Math.min(page * limit, total);
+  const to = Math.min(page * limit, total);
 
   return (
     <div style={{
@@ -203,11 +204,11 @@ function ReservationModal({
             marginBottom: 20, display: 'grid', gap: 10,
           }}>
             {[
-              ['Cancha',   reservation.courtId?.name],
-              ['Sede',     reservation.courtId?.location],
-              ['Fecha',    reservation.date],
-              ['Horario',  `${reservation.startTime} – ${reservation.endTime} (${reservation.durationHours}h)`],
-              ['Método',   PAYMENT_LABEL[reservation.paymentMethod] ?? reservation.paymentMethod],
+              ['Cancha', reservation.courtId?.name],
+              ['Sede', reservation.courtId?.location],
+              ['Fecha', reservation.date],
+              ['Horario', `${reservation.startTime} – ${reservation.endTime} (${reservation.durationHours}h)`],
+              ['Método', PAYMENT_LABEL[reservation.paymentMethod] ?? reservation.paymentMethod],
             ].map(([label, value]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 13 }}>
                 <span style={{ color: 'var(--fg-faint)', flexShrink: 0 }}>{label}</span>
@@ -404,14 +405,14 @@ function ReservationCard({
 /* ─── Main page ─── */
 export default function Reservations() {
   const [reservations, setReservations] = useState<PopulatedReservation[]>([]);
-  const [total, setTotal]               = useState(0);
-  const [page, setPage]                 = useState(1);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [search, setSearch]             = useState('');
-  const [loading, setLoading]           = useState(true);
-  const [actionId, setActionId]         = useState<string | null>(null);
-  const [selected, setSelected]         = useState<PopulatedReservation | null>(null);
-  const [toast, setToast]               = useState('');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<PopulatedReservation | null>(null);
+  const [toast, setToast] = useState('');
 
   const showToast = (msg: string) => {
     setToast(msg);
