@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import jsQR from 'jsqr';
 import type { IReservation, ICourt, IUser } from '../types';
 import api from '../lib/api';
 
@@ -82,10 +83,13 @@ function QrCamera({ onScan }: { onScan: (text: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
+  const scannedRef = useRef(false);
   const [camError, setCamError] = useState('');
 
   useEffect(() => {
     let stream: MediaStream | null = null;
+    scannedRef.current = false;
+
     type BarcodeDetectorType = { detect: (el: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
     const detector: BarcodeDetectorType | null = 'BarcodeDetector' in window
       ? new (window as unknown as { BarcodeDetector: new (o: object) => BarcodeDetectorType }).BarcodeDetector({ formats: ['qr_code'] })
@@ -101,13 +105,34 @@ function QrCamera({ onScan }: { onScan: (text: string) => void }) {
       .catch(() => setCamError('No se pudo acceder a la cámara. Usa la entrada manual.'));
 
     function tick() {
+      if (scannedRef.current) return;
       const video = videoRef.current;
       const canvas = canvasRef.current;
       if (!video || !canvas || video.readyState !== 4) { rafRef.current = requestAnimationFrame(tick); return; }
       canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-      canvas.getContext('2d')!.drawImage(video, 0, 0);
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(video, 0, 0);
+
       if (detector) {
-        detector.detect(video).then(codes => { if (codes.length > 0) onScan(codes[0].rawValue); }).catch(() => {});
+        detector.detect(video)
+          .then(codes => {
+            if (codes.length > 0 && !scannedRef.current) {
+              scannedRef.current = true;
+              onScan(codes[0].rawValue);
+            }
+          })
+          .catch(() => {})
+          .finally(() => { if (!scannedRef.current) rafRef.current = requestAnimationFrame(tick); });
+        return;
+      }
+
+      // Fallback: jsQR para Safari/Firefox donde BarcodeDetector no existe
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+      if (code && !scannedRef.current) {
+        scannedRef.current = true;
+        onScan(code.data);
+        return;
       }
       rafRef.current = requestAnimationFrame(tick);
     }
